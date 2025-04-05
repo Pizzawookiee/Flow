@@ -12,9 +12,6 @@ let selectedColor;
 let lastSaveTime = -Infinity; // Initialize to ensure the first save is always allowed
 const saveCooldown = 5000; // 5000 milliseconds = 5 seconds
 
-// --- This variable determines WHEN you want to trigger a save ---
-// --- It MUST be controlled by something specific, NOT just true all the time ---
-let triggerSaveCondition = false;
 
 function preload() {
   handPose = ml5.handPose({ flipped: true });
@@ -73,11 +70,11 @@ function draw() {
 		let d = dist(first_two_hands.at(0).at(0), first_two_hands.at(0).at(1), first_two_hands.at(1).at(0), first_two_hands.at(1).at(1)); 
 		if (d < 30) {
 			//save
-			text('hands', 10, 10);
+			//text('hands', 10, 10);
 			let currentTime = millis(); // Get the current time in milliseconds
 			if (currentTime - lastSaveTime >= saveCooldown) {
 
-				text(`Time: ${currentTime}ms. Trigger active. Cooldown elapsed. Saving!`, 20, 20);
+				//text(`Time: ${currentTime}ms. Cooldown elapsed. Saving!`, 20, 20);
 
 				// --- Perform the save ---
 				//saveCanvas(myCanvas, 'myDrawing', 'jpg'); // Add frameCount for unique names
@@ -142,3 +139,85 @@ function draw() {
   }
   image(painting, 0, 0);
 }
+
+
+// IMPORTANT: Replace with your actual API Key and potentially a more specific model
+const GEMINI_API_KEY = "YOUR_GOOGLE_AI_API_KEY"; // <--- PUT YOUR KEY HERE (See Security Note!)
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`;
+
+async function sendPaintingToGemini(graphicsBuffer) {
+  // 1. Get the underlying HTML Canvas element from the p5.Graphics object
+  const canvasElement = graphicsBuffer.elt;
+
+  // 2. Get the image data as a Base64 encoded string (JPEG format)
+  // You can use 'image/png' for lossless, potentially larger data
+  const mimeType = 'image/jpeg';
+  const quality = 0.8; // Optional quality setting for JPEG (0.0 to 1.0)
+  const dataUrl = canvasElement.toDataURL(mimeType, quality);
+
+  // 3. Extract the Base64 data part (remove the "data:image/jpeg;base64," prefix)
+  const base64Data = dataUrl.split(',')[1];
+
+  // 4. Prepare the Gemini API request payload
+  const requestBody = {
+    contents: [{
+      parts: [
+        { text: "Describe this image." }, // Your prompt for Gemini
+        {
+          inline_data: {
+            mime_type: mimeType,
+            data: base64Data
+          }
+        }
+      ]
+    }],
+    // Optional: Add generationConfig if needed
+    // generationConfig: {
+    //   "temperature": 0.4,
+    //   "topK": 32,
+    //   "topP": 1,
+    //   "maxOutputTokens": 4096,
+    //   "stopSequences": []
+    // },
+  };
+
+  // 5. Send the request using fetch
+  try {
+    const response = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      // Handle API errors (e.g., invalid key, rate limits)
+      const errorData = await response.json();
+      console.error("Gemini API Error:", response.status, errorData);
+      alert(`Error calling Gemini: ${errorData.error?.message || response.statusText}`);
+      return;
+    }
+
+    const data = await response.json();
+    console.log("Gemini Response:", data);
+
+    // Process the response (usually in data.candidates[0].content.parts[0].text)
+    if (data.candidates && data.candidates.length > 0) {
+        const description = data.candidates[0].content.parts[0].text;
+        console.log("Gemini Description:", description);
+        // You could display this description on the page, etc.
+        alert("Gemini says:\n" + description);
+    } else {
+        console.log("No content returned from Gemini.");
+        alert("Gemini returned no description.");
+    }
+
+
+  } catch (error) {
+    // Handle network errors
+    console.error("Network Error:", error);
+    alert("Network error when trying to reach Gemini.");
+  }
+}
+
