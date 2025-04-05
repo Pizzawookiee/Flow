@@ -1,3 +1,5 @@
+
+
 let video;
 let handPose;
 let hands = [];
@@ -8,6 +10,9 @@ let h = 8;
 let colors = [];
 let selectedColor;
 
+let geminiApiKey; // Variable to hold the API key
+let apiKeyLoaded = false; // Flag to track if the key is loaded
+let apiKeyError = null; // To store any loading errors
 
 let lastSaveTime = -Infinity; // Initialize to ensure the first save is always allowed
 const saveCooldown = 5000; // 5000 milliseconds = 5 seconds
@@ -15,7 +20,32 @@ const saveCooldown = 5000; // 5000 milliseconds = 5 seconds
 
 function preload() {
   handPose = ml5.handPose({ flipped: true });
+  //loadStrings('api_key.txt', handleKeyLoaded, handleKeyError);
 }
+
+// Callback function for successful key loading
+function handleKeyLoaded(result) {
+  if (result && result.length > 0) {
+    geminiApiKey = result[0].trim(); // Get the first line and remove whitespace
+    if (geminiApiKey) {
+      console.log("API Key loaded successfully.");
+      apiKeyLoaded = true;
+    } else {
+      apiKeyError = "API key file is empty.";
+      console.error(apiKeyError);
+    }
+  } else {
+    apiKeyError = "Could not read API key file or file is empty.";
+    console.error(apiKeyError);
+  }
+}
+
+// Callback function for errors during key loading
+function handleKeyError(error) {
+  apiKeyError = "Error loading api_key.txt. Make sure the file exists in the sketch directory and the server is running.";
+  console.error(apiKeyError, error);
+}
+
 
 function gotHands(results) {
   hands = results;
@@ -141,28 +171,24 @@ function draw() {
 }
 
 
-// IMPORTANT: Replace with your actual API Key and potentially a more specific model
-const GEMINI_API_KEY = "YOUR_GOOGLE_AI_API_KEY"; // <--- PUT YOUR KEY HERE (See Security Note!)
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`;
-
 async function sendPaintingToGemini(graphicsBuffer) {
-  // 1. Get the underlying HTML Canvas element from the p5.Graphics object
+  // Construct the URL using the loaded key
+  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${geminiApiKey}`;
+
+  // 1. Get the underlying HTML Canvas element
   const canvasElement = graphicsBuffer.elt;
 
-  // 2. Get the image data as a Base64 encoded string (JPEG format)
-  // You can use 'image/png' for lossless, potentially larger data
+  // 2. Get Base64 data
   const mimeType = 'image/jpeg';
-  const quality = 0.8; // Optional quality setting for JPEG (0.0 to 1.0)
+  const quality = 0.8;
   const dataUrl = canvasElement.toDataURL(mimeType, quality);
-
-  // 3. Extract the Base64 data part (remove the "data:image/jpeg;base64," prefix)
   const base64Data = dataUrl.split(',')[1];
 
-  // 4. Prepare the Gemini API request payload
+  // 3. Prepare API request payload
   const requestBody = {
     contents: [{
       parts: [
-        { text: "Describe this image." }, // Your prompt for Gemini
+        { text: "Transform this image into a more detailed watercolor painting." },
         {
           inline_data: {
             mime_type: mimeType,
@@ -171,17 +197,10 @@ async function sendPaintingToGemini(graphicsBuffer) {
         }
       ]
     }],
-    // Optional: Add generationConfig if needed
-    // generationConfig: {
-    //   "temperature": 0.4,
-    //   "topK": 32,
-    //   "topP": 1,
-    //   "maxOutputTokens": 4096,
-    //   "stopSequences": []
-    // },
+     // Optional generationConfig
   };
 
-  // 5. Send the request using fetch
+  // 4. Send request
   try {
     const response = await fetch(GEMINI_API_URL, {
       method: 'POST',
@@ -192,7 +211,6 @@ async function sendPaintingToGemini(graphicsBuffer) {
     });
 
     if (!response.ok) {
-      // Handle API errors (e.g., invalid key, rate limits)
       const errorData = await response.json();
       console.error("Gemini API Error:", response.status, errorData);
       alert(`Error calling Gemini: ${errorData.error?.message || response.statusText}`);
@@ -201,23 +219,25 @@ async function sendPaintingToGemini(graphicsBuffer) {
 
     const data = await response.json();
     console.log("Gemini Response:", data);
-
-    // Process the response (usually in data.candidates[0].content.parts[0].text)
-    if (data.candidates && data.candidates.length > 0) {
+	/*
+    if (data.candidates && data.candidates.length > 0 && data.candidates[0].content.parts.length > 0) {
         const description = data.candidates[0].content.parts[0].text;
         console.log("Gemini Description:", description);
-        // You could display this description on the page, etc.
         alert("Gemini says:\n" + description);
     } else {
-        console.log("No content returned from Gemini.");
-        alert("Gemini returned no description.");
+        // Handle cases where the response structure might be different or empty
+        const responseText = JSON.stringify(data);
+        console.log("Unexpected or empty response from Gemini:", responseText);
+        if(data.promptFeedback) {
+             alert("Gemini blocked the request or returned no content. Reason: " + data.promptFeedback.blockReason);
+        } else {
+             alert("Gemini returned an empty or unexpected response.");
+        }
     }
-
+	*/
 
   } catch (error) {
-    // Handle network errors
     console.error("Network Error:", error);
     alert("Network error when trying to reach Gemini.");
   }
 }
-
