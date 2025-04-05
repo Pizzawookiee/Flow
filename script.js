@@ -91,13 +91,16 @@ function draw() {
 	if (hands.length > 1) {
 		//text('hands', 10, 10);
 		
-		let hands_array = [];
+		let thumbs_array = [];
+		let pinkys_array = [];
 		for (let hand of hands){
 			let thumb = hand.thumb_tip;
-			hands_array.push([thumb.x, thumb.y]);
+			let pinky = hand.pinky_finger_tip;
+			thumbs_array.push([thumb.x, thumb.y]);
+			pinkys_array.push([pinky.x, pinky.y]);
 		}
-		first_two_hands = hands_array.slice(0, 2);
-		let d = dist(first_two_hands.at(0).at(0), first_two_hands.at(0).at(1), first_two_hands.at(1).at(0), first_two_hands.at(1).at(1)); 
+		first_two_thumbs = thumbs_array.slice(0, 2);
+		let d = dist(first_two_thumbs.at(0).at(0), first_two_thumbs.at(0).at(1), first_two_thumbs.at(1).at(0), first_two_thumbs.at(1).at(1)); 
 		if (d < 30) {
 			//save
 			//text('hands', 10, 10);
@@ -114,6 +117,12 @@ function draw() {
 				//triggerSaveCondition = false; // Reset the trigger immediately after saving
 
 			}
+
+		}
+		first_two_pinkys = pinkys_array.slice(0, 2);
+		let d2 = dist(first_two_pinkys.at(0).at(0), first_two_pinkys.at(0).at(1), first_two_pinkys.at(1).at(0), first_two_pinkys.at(1).at(1)); 
+		if (d2 < 30) {
+			painting.clear();
 
 		}
 	}
