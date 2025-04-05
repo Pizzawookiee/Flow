@@ -8,6 +8,14 @@ let h = 8;
 let colors = [];
 let selectedColor;
 
+
+let lastSaveTime = -Infinity; // Initialize to ensure the first save is always allowed
+const saveCooldown = 5000; // 5000 milliseconds = 5 seconds
+
+// --- This variable determines WHEN you want to trigger a save ---
+// --- It MUST be controlled by something specific, NOT just true all the time ---
+let triggerSaveCondition = false;
+
 function preload() {
   handPose = ml5.handPose({ flipped: true });
 }
@@ -17,7 +25,7 @@ function gotHands(results) {
 }
 
 function setup() {
-  createCanvas(640, 480);
+  myCanvas = createCanvas(640, 480);
   colorMode(HSB);
   painting = createGraphics(640, 480);
   painting.colorMode(HSB);
@@ -39,8 +47,53 @@ function setup() {
 
 function draw() {
   image(video, 0, 0);
+  
+  push(); // Isolate text style changes
+  fill(255); // White color for text (RGB default, works fine)
+  // Or use HSB white: fill(0, 0, 100);
+  stroke(0); // Black outline for better visibility over video
+  strokeWeight(2);
+  textSize(18);
+  textAlign(LEFT, TOP); // Align text to top-left
+  
   if (hands.length > 0) {
     let rightHand, leftHand;
+	
+	
+	// Code to save images:
+	if (hands.length > 1) {
+		//text('hands', 10, 10);
+		
+		let hands_array = [];
+		for (let hand of hands){
+			let thumb = hand.thumb_tip;
+			hands_array.push([thumb.x, thumb.y]);
+		}
+		first_two_hands = hands_array.slice(0, 2);
+		let d = dist(first_two_hands.at(0).at(0), first_two_hands.at(0).at(1), first_two_hands.at(1).at(0), first_two_hands.at(1).at(1)); 
+		if (d < 30) {
+			//save
+			text('hands', 10, 10);
+			let currentTime = millis(); // Get the current time in milliseconds
+			if (currentTime - lastSaveTime >= saveCooldown) {
+
+				text(`Time: ${currentTime}ms. Trigger active. Cooldown elapsed. Saving!`, 20, 20);
+
+				// --- Perform the save ---
+				//saveCanvas(myCanvas, 'myDrawing', 'jpg'); // Add frameCount for unique names
+				save(painting, 'myPainting.jpg');
+				// --- IMPORTANT: Update the last save time and reset the trigger ---
+				lastSaveTime = currentTime;
+				//triggerSaveCondition = false; // Reset the trigger immediately after saving
+
+			}
+
+		}
+	}
+	
+			
+	
+	
     for (let hand of hands) {
       if (hand.handedness === "Right") {
         let index = hand.index_finger_tip;
