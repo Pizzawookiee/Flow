@@ -1,0 +1,21 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+canvas {
+/*   position: fixed;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important; */
+} 
+
+/* canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 50% !important;
+  height: 50% !important;
+  transform: translate(50%, 50%) scale(0.5, 0.5);
+} */
